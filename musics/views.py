@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+import os
 from rest_framework.permissions import AllowAny
 import requests
 
@@ -15,11 +16,11 @@ def music(request, pk):
 
     url = "https://spotify-scraper.p.rapidapi.com/v1/track/metadata"
 
-    # querystring = {"trackId":"5ubHAQtKuFfiG4FXfLP804"}
+    
     querystring = {"trackId":track_id}
 
     headers = {
-        "x-rapidapi-key": "2b32171cfcmsh2b74ce12bb45e76p12c331jsnfb91640a9cfa",
+        "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
         "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
     }
     
@@ -46,14 +47,13 @@ def music(request, pk):
     status=response.status_code)
 
 def get_audio_details(query):
-    
     url = "https://spotify-scraper.p.rapidapi.com/v1/track/download/soundcloud"
     
 
     querystring = {"track": query}
 
     headers = {
-        "x-rapidapi-key": "2b32171cfcmsh2b74ce12bb45e76p12c331jsnfb91640a9cfa",
+        "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
         "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
     }
 
@@ -73,10 +73,62 @@ def get_audio_details(query):
             else:
                 print("No audio data availble")
         else:
-            print("No 'youtubeVideo' or 'audio' key found")
+            print("No 'soundcloudTrack' or 'audio' key found")
     else:
         print("Failed to fetch data")
 
     return audio_details
 
-# def search(request):
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def search(request):
+        # search_query = request.POST['search_query']
+        search_query = request.data.get('search_query', '')
+
+        url = "https://spotify-scraper.p.rapidapi.com/v1/search"
+
+        querystring = {"term":search_query,"type":"track"}
+
+        headers = {
+            "X-RapidAPI-Key":os.environ.get("x-rapidapi-key"),
+            "X-RapidAPI-Host": "spotify-scraper.p.rapidapi.com"
+        }
+
+        response = requests.get(url, headers=headers, params=querystring)
+
+        track_list = []
+
+        if response.status_code == 200:
+            data = response.json()
+
+            search_results_count = data["tracks"]["totalCount"]
+            tracks = data["tracks"]["items"]
+
+            for track in tracks:
+                track_name = track["name"]
+                artist_name = track["artists"][0]["name"]
+                duration = track["durationText"]
+                trackid = track["id"]
+
+                # if get_track_image(trackid, track_name):
+                #     track_image = get_track_image(trackid, track_name)
+                # else:
+                #     track_image = "https://imgv3.fotor.com/images/blog-richtext-image/music-of-the-spheres-album-cover.jpg"
+
+                track_list.append({
+                    'track_name': track_name,
+                    'artist_name': artist_name,
+                    'duration': duration,
+                    'trackid': trackid,
+                    # 'track_image': track_image,
+                })
+
+            return Response({
+                'search_results_count': search_results_count,
+                'track_list': track_list,
+            })
+        return Response({"error": "Failed to fetch track metadata from Spotify Scraper."},
+            status=response.status_code)
+
+
