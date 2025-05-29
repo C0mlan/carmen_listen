@@ -131,4 +131,7 @@ def search(request):
         return Response({"error": "Failed to fetch track metadata from Spotify Scraper."},
             status=response.status_code)
 
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# def 
 
