@@ -4,8 +4,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 import os
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 import requests
+from .models import Favourite
+
 
 # Create your views here.
 @api_view(["GET"])
@@ -131,7 +133,89 @@ def search(request):
         return Response({"error": "Failed to fetch track metadata from Spotify Scraper."},
             status=response.status_code)
 
-# @api_view(["POST"])
-# @permission_classes([IsAuthenticated])
-# def 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_fav(request, pk):
+    
+    track_id = pk
+
+    url = "https://spotify-scraper.p.rapidapi.com/v1/track/metadata"
+
+    
+    querystring = {"trackId":track_id}
+
+    headers = {
+        "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
+        "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
+    }
+    
+    response = requests.get(url, headers=headers, params=querystring)
+
+    if response.status_code ==200:
+        data= response.json()
+        track_name = data.get("name")
+    
+    
+    reaction = request.data.get('reaction')
+
+    if reaction == "like":
+        Favourite.objects.get_or_create(user=request.user, 
+                                        track_id=track_id,
+                                        track_name=track_name)
+        return Response({"message": f"{track_name} added to your favourites"})
+
+    elif reaction == "unlike":
+        Favourite.objects.filter(user=request.user, 
+                                 track_id=track_id,
+                                 track_name=track_name).delete()
+        return Response({"message": f"{track_name} removed from your favourites"})
+    else:
+        return Response({"error": "Invalid reaction"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fav_playlist(request):
+    favourites = Favourite.objects.filter(user=request.user).values_list("track_id", flat=True)
+    track_id = favourites
+
+    results = []
+    for track_id in favourites:
+        url = "https://spotify-scraper.p.rapidapi.com/v1/track/metadata"
+
+        
+        querystring = {"trackId":track_id}
+
+        headers = {
+            "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
+            "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
+        }
+        
+        response = requests.get(url, headers=headers, params=querystring)
+
+        if response.status_code ==200:
+            data= response.json()
+
+            track_name = data.get("name")
+            artists_list = data.get("artists", [])
+            first_artist_name = artists_list[0].get("name") if artists_list else "No aritst found"
+            audio_details_query = track_name + first_artist_name
+            audio_details = get_audio_details(audio_details_query)
+            audio_url = audio_details[0]
+            duration_text = audio_details[1]
+
+            results.append({
+                "track_name": track_name,
+                "first_artist": first_artist_name,
+                "audio_url": audio_url,
+                "duration_text": duration_text
+            })
+        else:
+            results.append({
+            "track_id": track_id,
+            "error": "Failed to fetch metadata"
+            })
+
+    return Response(results)
+        
 
