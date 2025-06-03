@@ -1,4 +1,6 @@
 from django.shortcuts import render
+from django.views.decorators.cache import cache_page
+from django.views.decorators.cache import cache_page
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -7,6 +9,7 @@ import os
 from rest_framework.permissions import AllowAny, IsAuthenticated
 import requests
 from .models import Favourite
+from .utils import get_audio_details
 
 
 # Create your views here.
@@ -22,7 +25,7 @@ def music(request, pk):
     querystring = {"trackId":track_id}
 
     headers = {
-        "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
+        "x-rapidapi-key": os.environ.get("x_rapidapi_key"),
         "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
     }
     
@@ -48,38 +51,7 @@ def music(request, pk):
     return Response({"error": "Failed to fetch track metadata from Spotify Scraper."},
     status=response.status_code)
 
-def get_audio_details(query):
-    url = "https://spotify-scraper.p.rapidapi.com/v1/track/download/soundcloud"
-    
 
-    querystring = {"track": query}
-
-    headers = {
-        "x-rapidapi-key": os.environ.get("x-rapidapi-key"),
-        "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
-    }
-
-    response = requests.get(url, headers=headers, params=querystring)
-
-    audio_details = []
-    if response.status_code == 200:
-        response_data = response.json()
-        if "soundcloudTrack" in response_data and "audio" in response_data['soundcloudTrack']:
-            audio_list = response_data['soundcloudTrack']['audio']
-            if audio_list:
-                first_audio_url = audio_list[0]['url']
-                duration_text = audio_list[0]['durationText']
-
-                audio_details.append(first_audio_url)
-                audio_details.append(duration_text)
-            else:
-                print("No audio data availble")
-        else:
-            print("No 'soundcloudTrack' or 'audio' key found")
-    else:
-        print("Failed to fetch data")
-
-    return audio_details
 
 
 @api_view(["POST"])
@@ -93,8 +65,8 @@ def search(request):
         querystring = {"term":search_query,"type":"track"}
 
         headers = {
-            "X-RapidAPI-Key":os.environ.get("x-rapidapi-key"),
-            "X-RapidAPI-Host": "spotify-scraper.p.rapidapi.com"
+            "x-rapidapi-key": os.environ.get("x_rapidapi_key"),
+            "x-rapidapi-host": "spotify-scraper.p.rapidapi.com"
         }
 
         response = requests.get(url, headers=headers, params=querystring)
@@ -104,10 +76,10 @@ def search(request):
         if response.status_code == 200:
             data = response.json()
 
-            search_results_count = data["tracks"]["totalCount"]
+            # search_results_count = data["tracks"]["totalCount"]
             tracks = data["tracks"]["items"]
 
-            for track in tracks:
+            for track in tracks[:2]:
                 track_name = track["name"]
                 artist_name = track["artists"][0]["name"]
                 duration = track["durationText"]
@@ -127,7 +99,7 @@ def search(request):
                 })
 
             return Response({
-                'search_results_count': search_results_count,
+                # 'search_results_count': search_results_count,
                 'track_list': track_list,
             })
         return Response({"error": "Failed to fetch track metadata from Spotify Scraper."},
@@ -175,12 +147,13 @@ def save_fav(request, pk):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@cache_page(60 * 1, key_prefix="fav_playlist")
 def fav_playlist(request):
     favourites = Favourite.objects.filter(user=request.user).values_list("track_id", flat=True)
     track_id = favourites
 
     results = []
-    for track_id in favourites:
+    for song in favourites:
         url = "https://spotify-scraper.p.rapidapi.com/v1/track/metadata"
 
         
@@ -212,7 +185,7 @@ def fav_playlist(request):
             })
         else:
             results.append({
-            "track_id": track_id,
+            "track_id": song,
             "error": "Failed to fetch metadata"
             })
 

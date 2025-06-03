@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    container_name: django_app
+    # command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
+    #   - CELERY_BROKER_URL=redis://redis:6379/0
+  redis:
+    image: redis:7
+    ports:
+    - "6379:6379"
