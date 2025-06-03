@@ -7,12 +7,14 @@ Music Explorer API is a backend-only web service built with Django Rest Framewor
 This project integrates with the Spotify Scraper API (via RapidAPI).
 
 ##
-![Get a song](images/get_song.PNG)
-![search for song](images/search_song.PNG)
-![user like](images/user_like.PNG)
-![user unlike](images/user_unlike.PNG)
-![user playlist](images/user_playlist.png)
-![user playlist with redis](images/user_playlist_redis.png)
+<img src="images/get_song.PNG" width="500" />
+<img src="images/search_song.PNG" width="500" />
+<img src="images/user_like.PNG" width="500" />
+<img src="images/user_unlike.PNG" width="500" />
+<img src="images/user_playlist.png" width="500" />
+<img src="images/user_playlist_redis.png" width="500" />
+
+
 
 
 
