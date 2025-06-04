@@ -2,9 +2,7 @@
 
 ## Overview
 
-Music Explorer API is a backend-only web service built with Django Rest Framework (DRF) that enables users to search for music tracks, view track metadata, and manage a personalized list of favourite songs.
-
-This project integrates with the Spotify Scraper API (via RapidAPI).
+Carmen_Listen API is a backend-only streaming service built with Django Rest Framework (DRF) that enables users to search for music tracks, view track metadata, and manage a personalized list of favourite songs. This project integrates with the Spotify Scraper API (via RapidAPI).
 
 ## Features
 ### Music Search
